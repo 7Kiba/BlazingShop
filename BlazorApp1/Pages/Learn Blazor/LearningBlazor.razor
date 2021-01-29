@@ -1,0 +1,11 @@
+﻿@page "/learningblazor"
+@inherits LearningBlazorBase
+
+<h3>@title</h3>
+
+<p>On change &nbsp; <input @bind="input" @bind:event="oninput"/></p>
+<p>Input is: @(input == null ? "(Type something)":input)</p>
+<p><button @onclick="GetName">Surprise me!</button></p>
+@code {
+   
+}

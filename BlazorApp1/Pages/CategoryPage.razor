@@ -1,0 +1,141 @@
+﻿@page "/category"
+
+@using BlazorApp1.Data
+@using BlazorApp1.Services
+
+@inherits OwningComponentBase<CategoryService>
+
+<h3>CategoryPage</h3>
+
+<AuthorizeView>
+    <Authorized>
+        @if (categories == null)
+        {
+            <p><em>Loading or no categories exist</em></p>
+        }
+        else
+        {
+            <div class="container border p-3">
+                <div class="row">
+                    <div class="col-5">
+                        <h3 class="text-info">Category List</h3>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <button class="btn btn-info form-control" @onclick="AddNewCategory">
+                        Add New Category
+                    </button>
+                </div>
+                <div class="row pt-4">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Category Name</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var category in categories)
+                            {
+                                <tr>
+                                    <td>@category.Name</td>
+                                    <td>
+                                        <button class="btn btn-primary" style="width:150px" @onclick="(() => EditCategory(category))">
+                                            Edit
+                                        </button>
+                                        <button class="btn btn-danger" style="width:150px" @onclick="(() => DeleteCategory(category.Id))">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <div>You are not authorized.</div>
+    </NotAuthorized>
+</AuthorizeView>
+@if(showPopup)
+{ 
+<div class="modal" tabindex="-1" style="display:block" role="dialog">
+    <EditForm Model="@objCategory" OnValidSubmit="@ValidSubmit">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="text-info">@(objCategory.Id == 0 ? "New" : "Update") Category</h3>
+                    <button type="button" class="close" @onclick="ClosePopup">
+                        <span aria-hidden="true">X</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
+                    <div class="col-9">
+                        <div class="row py-2">
+                            <div class="col-4">
+                                Category Name
+                            </div>
+                            <div class="col-8">
+                                <input class="form-control" type="text" @bind="objCategory.Name" />
+                            </div>
+                        </div>
+                        <div class="row py-2">
+                            <div class="offset-4 col">
+                                <button class="btn btn-primary form-control" type="submit">Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+</div>
+}
+
+@code {
+    List<Category> categories;
+    bool showPopup = false;
+    Category objCategory = new Category();
+
+    protected override void OnInitialized() => ReloadCategories();
+
+    void ReloadCategories() => categories = Service.GetCategories();
+
+    void AddNewCategory()
+    {
+        showPopup = true;
+        objCategory = new Category();
+    }
+
+    void EditCategory(Category targetCategory)
+    {
+        showPopup = true;
+        objCategory = targetCategory;
+    }
+
+    void DeleteCategory(int id)
+    {
+        _ = Service.DeleteCategory(id);
+        ReloadCategories();
+    }
+
+    void ClosePopup() => showPopup = false;
+    void ValidSubmit()
+    {
+        ClosePopup();
+        if(objCategory.Id == 0)
+        {
+            _ = Service.CreateCategory(objCategory);
+        }
+        else
+        {
+            _ = Service.UpdateCategory(objCategory);
+        }
+
+        ReloadCategories();
+    }
+}

@@ -1,0 +1,88 @@
+﻿@using BlazorApp1.Data
+@using BlazorApp1.Services
+
+@inject NavigationManager _navigator 
+@inherits OwningComponentBase<AppointmentService>
+
+<div class="p-4 border row">
+    <EditForm class="col-8" Model="@Appointment" OnValidSubmit="@ValidSubmit">
+        <div class="form-group row">
+            <div class="col-8 offset-4">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+            </div>
+        </div>
+        <div class="form-group row">
+            <div class="col-4">
+                Name
+            </div>
+            <div class="col-8">
+                <input type="text" @bind="Appointment.CustomerName" class="form-control" />
+            </div>
+            <div class="col-4">
+                Email
+            </div>
+            <div class="col-8">
+                <input type="email" @bind="Appointment.CustomerEmail" class="form-control" />
+            </div>
+            <div class="col-4">
+                Phone
+            </div>
+            <div class="col-8">
+                <input type="text" @bind="Appointment.CustomerPhone" class="form-control" />
+            </div>
+            <div class="col-4">
+                AppointmentDate
+            </div>
+            <div class="col-8">
+                <InputDate @bind-Value="Appointment.AppointmentDate" class="form-control" />
+            </div>
+            <div class="col-4">
+                <button @onclick="OnClickShowDetails" class="btn btn-success form-control">
+                    Cancel
+                </button>
+            </div>
+            <div class="col-4">
+                <button class="btn btn-primary form-control">
+                    Book Now
+                </button>
+            </div>
+        </div>
+    </EditForm>
+    <div class="offset-1 col-3">
+        @if (Appointment.Product != null)
+        {
+        <img src="@ConvertImageToDisplay(Appointment.Product.Image)"
+             width="100%" style="border-radius:5px; border: 1px solid #bbb9b9" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Appointment Appointment { get; set; }
+
+    [Parameter]
+    public EventCallback OnClickShowDetails { get; set; }
+
+    string ConvertImageToDisplay(byte[] image)
+    {
+        var imageString = "";
+        if (image != null)
+        {
+            var base64Image = Convert.ToBase64String(image);
+            imageString = $"data:image/jpg;base64,{base64Image}";
+        }
+
+        return imageString;
+    }
+
+    private void ValidSubmit()
+    {
+        var result = Service.CreateAppointment(Appointment);
+        if(result)
+        {
+            _navigator.NavigateTo("appointmentbooked");
+        }
+    }
+}

@@ -1,0 +1,229 @@
+﻿@page "/product"
+
+@using BlazorApp1.Data
+@using BlazorApp1.Services
+@using BlazorInputFile;
+@using System.IO;
+
+@inherits OwningComponentBase<ProductService>
+
+<h3>ProductPage</h3>
+<AuthorizeView>
+    <Authorized>
+        @if (products == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <div class="container border p-3">
+                <div class="row">
+                    <div class="col-5">
+                        <h3 class="text-info">Category List</h3>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <button class="btn btn-info form-control" @onclick="AddNewProduct">
+                        Add New Product
+                    </button>
+                </div>
+                <div class="row pt-4">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Price</th>
+                                <th>Shade Color</th>
+                                <th>Category</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var product in products)
+                            {
+                                <tr>
+                                    <td>@product.Name</td>
+                                    <td>@product.Price</td>
+                                    <td>@product.ShadeColor</td>
+                                    <td>@product.Category.Name</td>
+                                    <td>
+                                        <button class="btn btn-primary" style="width:150px" @onclick="(() => EditProduct(product))">
+                                            Edit
+                                        </button>
+                                        <button class="btn btn-danger" style="width:150px" @onclick="(() => DeleteProduct(product.Id))">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <div>You are not authorized.</div>
+    </NotAuthorized>
+</AuthorizeView>
+@if (showPopup)
+{
+<div class="modal" tabindex="-1" style="display:block" role="dialog">
+    <EditForm Model="@objProduct" OnValidSubmit="@ValidSubmit">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="text-info">@(objProduct.Id == 0 ? "New" : "Update") Product</h3>
+                    <button type="button" class="close" @onclick="ClosePopup">
+                        <span aria-hidden="true">X</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
+                    <div class="col-9">
+                        <div class="row py-2">
+                            <div class="col-4">
+                                Product Name
+                            </div>
+                            <div class="col-8">
+                                <input class="form-control" type="text" @bind="objProduct.Name" />
+                                <ValidationMessage For="@(() => objProduct.Name)"/>
+                            </div>
+                            <div class="col-4">
+                                Price
+                            </div>
+                            <div class="col-8">
+                                <input class="form-control" type="text" @bind="objProduct.Price" />
+                                <ValidationMessage For="@(() => objProduct.Price)" />
+                            </div>
+                            <div class="col-4">
+                                Shade Color
+                            </div>
+                            <div class="col-8">
+                                <input class="form-control" type="text" @bind="objProduct.ShadeColor" />
+                                <ValidationMessage For="@(() => objProduct.ShadeColor)" />
+                            </div>
+                            <div class="col-4">
+                                Category Name
+                            </div>
+                            <div class="col-8">
+                                <select @onchange="CategorySelectionChanged" class="form-control">
+                                    @foreach(var category in categories)
+                                    {
+                                        <option value="@category.Id"
+                                                selected="@(category.Id == objProduct.CategoryId)">@category.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                Image
+                            </div>
+                            <div class="col-8">
+                                <InputFile OnChange="HandleSelection"/>
+                            </div>
+                        </div>
+                        <div class="row py-2">
+                            <div class="offset-4 col">
+                                <button class="btn btn-primary form-control" type="submit">Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <img src="@ConvertImageToDisplay(objProduct.Image)" width="100%"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+</div>
+}
+
+@code {
+    public byte[] ImageUploaded { get; set; }
+
+    List<Product> products;
+    List<Category> categories;
+    bool showPopup = false;
+    Product objProduct = new Product();
+
+    protected override void OnInitialized() => ReloadProducts();
+
+    void ReloadProducts() => products = Service.GetProducts();
+    void ReloadCategories() => categories = Service.GetCategoryList();
+
+    void AddNewProduct()
+    {
+        showPopup = true;
+        objProduct = new Product();
+        ReloadCategories();
+        objProduct.CategoryId = categories.FirstOrDefault() != null ? categories.FirstOrDefault().Id : 0;
+    }
+
+    void EditProduct(Product targetProduct)
+    {
+        showPopup = true;
+        objProduct = targetProduct;
+        ReloadCategories();
+    }
+
+    void DeleteProduct(int id)
+    {
+        _ = Service.DeleteProduct(id);
+        ReloadProducts();
+    }
+
+    void ClosePopup() => showPopup = false;
+    void ValidSubmit()
+    {
+        ClosePopup();
+
+        if (ImageUploaded != null)
+        {
+            objProduct.Image = ImageUploaded;
+            ImageUploaded = null;
+        }
+
+        if (objProduct.Id == 0)
+        {
+            _ = Service.CreateProduct(objProduct);
+        }
+        else
+        {
+            _ = Service.UpdateProduct(objProduct);
+        }
+
+        ReloadProducts();
+    }
+
+    async Task HandleSelection(IFileListEntry[] files)
+    {
+        var file = files.FirstOrDefault();
+        if (file != null)
+        {
+            var memoryStream = new MemoryStream();
+            await file.Data.CopyToAsync(memoryStream);
+            ImageUploaded = memoryStream.ToArray();
+        }
+    }
+
+    string ConvertImageToDisplay(byte[] image)
+    {
+        var imageString = "";
+        if(image != null)
+        {
+            var base64Image = Convert.ToBase64String(image);
+            imageString = $"data:image/jpg;base64,{base64Image}";
+        }
+
+        return imageString;
+    }
+
+    void CategorySelectionChanged(ChangeEventArgs e)
+    {
+        if(int.TryParse(e.Value.ToString(), out var id))
+        {
+            objProduct.CategoryId = id;
+        }
+    }
+}
